@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!-- McDonnell Douglas DC-10 -->
+<!-- Engine fire particle system -->
+<!-- Adapted from the 737-900ER (old and out-of-date aircraft, use the 737-900 instead) -->
+
+<PropertyList>
+
+		<particlesystem>
+		<texture>fire.png</texture>
+	    <condition>
+		  <equals>
+ 	 		<property>sim/multiplay/generic/int[0]</property>
+	  		<value>1</value>
+ 	 	  </equals>
+	    </condition>
+		<emissive>true</emissive>
+		<lighting>false</lighting>
+		<offsets>
+			<roll-deg>90</roll-deg>
+		</offsets>
+		<attach>world</attach>
+		<placer>
+			<type>point</type>
+		</placer>
+		<shooter>
+			<theta-min-deg>65</theta-min-deg>
+			<theta-max-deg>115</theta-max-deg>
+			<phi-min-deg>-10</phi-min-deg>
+			<phi-max-deg>10</phi-max-deg>
+			<speed>
+				<value>15</value>
+				<spread>500</spread>
+			</speed>
+			</shooter>
+		<counter>
+			<particles-per-sec>
+				<value>150</value>
+				<spread>200</spread>
+			</particles-per-sec>
+		</counter>
+		<align>billboard</align>
+		<particle>
+			<start>
+				<color>
+					<red>
+						<value>0.6</value>
+					</red>
+					<green>
+						<value>0.6</value>
+					</green>
+					<blue>
+						<value>0.6</value>
+					</blue>
+					<alpha>
+						<value>0.4</value>
+					</alpha>
+				</color>
+				<size>
+					<value>1.2</value>
+				</size>
+			</start>
+			<end>
+				<color>
+					<red>
+						<value>0</value>
+					</red>
+					<green>
+						<value>0</value>
+					</green>
+					<blue>
+						<value>0</value>
+					</blue>
+					<alpha>
+						<value>0</value>
+					</alpha>
+				</color>
+				<size>
+					<value>4.0</value>
+				</size>
+			</end>
+			<life-sec>
+				<value>15</value>
+			</life-sec>
+			<mass-kg>1.3</mass-kg>
+			<radius-m>0.03</radius-m>
+		</particle>
+	</particlesystem>
+
+</PropertyList>
