@@ -1,16 +1,10 @@
-#
-# Install: Include this code into an aircraft to make it damagable. (remember to add it to the -set file)
-#
-# Author: Nikolai V. Chr. (with some improvement by Onox and Pinto)
-#
-#
-
-
 var clamp = func(v, min, max) { v < min ? min : v > max ? max : v }
 
 var TRUE  = 1;
 var FALSE = 0;
 
+var hp = 0.5;
+var hp_max = hp;
 
 var cannon_types = {
     " M70 rocket hit":        0.25, #135mm
@@ -80,31 +74,6 @@ var warhead_lbs = {
     "HVAR":                  7.50,#P51
 };
 
-var fireMsgs = {
-  
-    # F14
-    " FOX3 at":       nil, # radar
-    " FOX2 at":       nil, # heat
-    " FOX1 at":       nil, # semi-radar
-
-    # Viggen
-    " Fox 1 at":      nil, # semi-radar
-    " Fox 2 at":      nil, # heat
-    " Fox 3 at":      nil, # radar
-    " Greyhound at":  nil, # cruise missile
-    " Bombs away at": nil, # bombs
-    " Bruiser at":    nil, # anti-ship
-    " Rifle at":      nil, # TV guided
-
-    # SAM and missile frigate
-    " Bird away at":  nil, # G/A
-
-    # F15
-    " aim7 at":       nil,
-    " aim9 at":       nil,
-    " aim120 at":     nil,
-};
-
 var incoming_listener = func {
   var history = getprop("/sim/multiplay/chat-history");
   var hist_vector = split("\n", history);
@@ -113,7 +82,6 @@ var incoming_listener = func {
     var last_vector = split(":", last);
     var author = last_vector[0];
     var callsign = getprop("sim/multiplay/callsign");
-    callsign = size(callsign) < 8 ? callsign : left(callsign,7);
     if (size(last_vector) > 1 and author != callsign) {
       # not myself
       #print("not me");
@@ -122,7 +90,10 @@ var incoming_listener = func {
         # a m2000 is firing at us
         m2000 = TRUE;
       }
-      if (contains(fireMsgs, last_vector[1]) or m2000 == TRUE) {
+      if (last_vector[1] == " FOX2 at" or last_vector[1] == " aim7 at" or last_vector[1] == " aim9 at"
+          or last_vector[1] == " aim120 at" or last_vector[1] == " RB-24J fired at" or last_vector[1] == " RB-74 fired at"
+          or last_vector[1] == " RB-71 fired at" or last_vector[1] == " RB-15F fired at"
+          or last_vector[1] == " RB-99 fired at" or m2000 == TRUE) {
         # air2air being fired
         if (size(last_vector) > 2 or m2000 == TRUE) {
           #print("Missile launch detected at"~last_vector[2]~" from "~author);
@@ -177,7 +148,7 @@ var incoming_listener = func {
             }
           }
         }
-      } elsif (1==1) { # mirage: getprop("/controls/armament/mp-messaging")
+      } elsif (1 == 1) { # mirage: getprop("/controls/armament/mp-messaging")
         # latest version of failure manager and taking damage enabled
         #print("damage enabled");
         var last1 = split(" ", last_vector[1]);
@@ -197,68 +168,56 @@ var incoming_listener = func {
             if(distance != nil) {
               var dist = distance;
 
-              if (type == "M90") {
-                var prob = rand()*0.5;
-                var failed = fail_systems(prob);
-                var percent = 100 * prob;
-                printf("Took %.1f%% damage from %s clusterbombs at %0.1f meters. %s systems was hit", percent,type,dist,failed);
-                nearby_explosion();
-                return;
-              }
-
-              distance = clamp(distance-3, 0, 1000000);
-              var maxDist = 0;
-
+              #check distance w/ if statement here
+              
               if (contains(warhead_lbs, type)) {
-                maxDist = maxDamageDistFromWarhead(warhead_lbs[type]);
+                #maxDist = maxDamageDistFromWarhead(warhead_lbs[type]);
               } else {
                 return;
               }
-
-              var diff = maxDist-distance;
-              if (diff < 0) {
-                diff = 0;
-              }
-              
-              diff = diff * diff;
-              
-              var probability = diff / (maxDist*maxDist);
-
-              var failed = fail_systems(probability);
-              var percent = 100 * probability;
-              printf("Took %.1f%% damage from %s missile at %0.1f meters. %s systems was hit", percent,type,dist,failed);
-              nearby_explosion();
-            }
-          } 
-        } elsif (cannon_types[last_vector[1]] != nil) {
-          if (size(last_vector) > 2 and last_vector[2] == " "~callsign) {
-            if (size(last_vector) < 4) {
-              # msg is either missing number of hits, or has no trailing dots from spam filter.
-              print('"'~last~'"   is not a legal hit message, tell the shooter to upgrade his OPRF plane :)');
-              return;
-            }
-            var last3 = split(" ", last_vector[3]);
-            if(size(last3) > 2 and size(last3[2]) > 2 and last3[2] == "hits" ) {
-              var probability = cannon_types[last_vector[1]];
-              var hit_count = num(last3[1]);
-              if (hit_count != nil) {
-                var damaged_sys = 0;
-                for (var i = 1; i <= hit_count; i = i + 1) {
-                  var failed = fail_systems(probability);
-                  damaged_sys = damaged_sys + failed;
+        
+              if (type == "M90" and distance < 300) {
+                var failed = fail_systems(warhead_lbs[type]/2);
+                return;
+              } elsif (distance < 150) {
+                var prob = 1;
+                if ( distance > 50 ) {
+                  distance = distance - 50;
+                  prob = 1 - (distance/100);
                 }
+              }
+        
 
-                printf("Took %.1f%% x %2d damage from cannon! %s systems was hit.", probability*100, hit_count, damaged_sys);
-                nearby_explosion();
+              var failed = fail_systems(warhead_lbs[type] * prob);
+              #ar percent = 100 * probability;
+              #printf("Took %.1f%% damage from %s missile at %0.1f meters. %s systems was hit", percent,type,dist,failed);
+            }
+          }
+        } elsif (cannon_types[last_vector[1]] != nil) {
+          # cannon hitting someone
+          print("cannon");
+          if (size(last_vector) > 2 and last_vector[2] == " "~callsign) {
+            print("cannon hit us");
+              var last3 = split(" ", last_vector[3]);
+            #print("last3[2]: " ~ last3[2]);
+            #print("last3[1]: " ~ last3[1]);
+            if(size(last3) > 2) {
+              if ( last3[2] == "hits" ) {
+                var hit_count = num(last3[1]);
               }
             } else {
-              var probability = cannon_types[last_vector[1]];
-              #print("probability: " ~ probability);
-              
-              var failed = fail_systems(probability * 3);# Old messages is assumed to be 3 hits
-              printf("Took %.1f%% x 3 damage from cannon! %s systems was hit.", probability*100, failed);
-              nearby_explosion();
+              var hit_count = 4;
             }
+            var damaged_sys = 0;
+            var probability = cannon_types[last_vector[1]];
+            for (var i = 1; i <= hit_count; i = i + 1) {
+              var failed = fail_systems(probability);
+              damaged_sys = damaged_sys + failed;
+            }
+            # that someone is me!
+            #print("hitting me");
+
+            printf("Took %.1f%% damage from cannon! %s systems was hit.", probability*hit_count*100, damaged_sys);
           }
         }
       }
@@ -268,22 +227,19 @@ var incoming_listener = func {
 
 var maxDamageDistFromWarhead = func (lbs) {
   # very simple
-  var dist = 3*math.sqrt(lbs);
+  var dist = 7*math.sqrt(lbs);
 
   return dist;
 }
 
-var fail_systems = func (probability) {
-    var failure_modes = FailureMgr._failmgr.failure_modes;
-    var mode_list = keys(failure_modes);
-    var failed = 0;
-    foreach(var failure_mode_id; mode_list) {
-        if (rand() < probability) {
-            FailureMgr.set_failure_level(failure_mode_id, 1);
-            failed += 1;
-        }
-    }
-    return failed;
+var fail_systems = func (damage) {
+	hp = hp - damage;
+	print("HP: " ~ hp ~ "/" ~ hp_max);
+	
+	if ( hp < 0 ) {
+		setprop("/carrier/sunk/",1);
+    setprop("/sim/multiplay/generic/int[0]",1);
+	}
 };
 
 var playIncomingSound = func (clock) {
@@ -301,20 +257,6 @@ var getCallsign = func (callsign) {
   return node;
 }
 
-var nearby_explosion = func {
-  setprop("damage/sounds/nearby-explode-on", 0);
-  settimer(nearby_explosion_a, 0);
-}
-
-var nearby_explosion_a = func {
-  setprop("damage/sounds/nearby-explode-on", 1);
-  settimer(nearby_explosion_b, 0.5);
-}
-
-var nearby_explosion_b = func {
-  setprop("damage/sounds/nearby-explode-on", 0);
-}
-
 var processCallsigns = func () {
   callsign_struct = {};
   var players = props.globals.getNode("ai/models").getChildren();
@@ -329,19 +271,15 @@ var processCallsigns = func () {
 
 processCallsigns();
 
-setlistener("/sim/multiplay/chat-history", incoming_listener, 0, 0);
+var logTime = func{
+  #log time and date for outputing ucsv files for converting into KML files for google earth.
+  if (getprop("logging/log[0]/enabled") == TRUE and getprop("sim/time/utc/year") != nil) {
+    var date = getprop("sim/time/utc/year")~"/"~getprop("sim/time/utc/month")~"/"~getprop("sim/time/utc/day");
+    var time = getprop("sim/time/utc/hour")~":"~getprop("sim/time/utc/minute")~":"~getprop("sim/time/utc/second");
 
-#setprop("/sim/failure-manager/display-on-screen", FALSE);
-
-var re_init = func {
-  # repair the aircraft
-
-  var failure_modes = FailureMgr._failmgr.failure_modes;
-  var mode_list = keys(failure_modes);
-
-  foreach(var failure_mode_id; mode_list) {
-    FailureMgr.set_failure_level(failure_mode_id, 0);
+    setprop("logging/date-log", date);
+    setprop("logging/time-log", time);
   }
 }
 
-setlistener("/sim/signals/reinit", re_init, 0, 0);
+setlistener("/sim/multiplay/chat-history", incoming_listener, 0, 0);
